@@ -1,0 +1,89 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+#include<string.h>
+#include<math.h>
+#include <ESP8266WiFiMulti.h>
+ESP8266WiFiMulti WiFiMulti;
+#define TONEPIN 1
+#define TONE_BASE 294
+const char* ssid = "ESP82660";
+const char* password = "12345678l";
+unsigned long previousMillis = 0;
+const long interval = 2000; 
+#include <Wire.h>
+
+String temperature;
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println();
+  WiFi.mode(WIFI_STA);
+  WiFiMulti.addAP(ssid, password);
+  while((WiFiMulti.run() != WL_CONNECTED)) { 
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("Connected to WiFi");
+  pinMode(14,INPUT);
+  pinMode(TONEPIN, OUTPUT);
+  noTone(TONEPIN);
+  delay(100);
+}
+void Play() {
+  tone(TONEPIN, TONE_BASE + 84 * 15, 10000);
+  delay(10100);
+  noTone(TONEPIN);
+}
+void loop() {
+  int x=analogRead(14);
+  if(x!=1023) {delay(1000);return;}
+  unsigned long currentMillis = millis();
+  if(currentMillis - previousMillis >= interval) {
+    String s="http://"+WiFi.gatewayIP().toString()+"/temperature";
+    //Serial.println(s);
+    // Check WiFi connection status
+    if ((WiFiMulti.run() == WL_CONNECTED)) {
+      temperature = httpGETRequest(s.c_str());
+      if(temperature.indexOf(" ")==-1) return;
+      double a,b;
+      sscanf(temperature.c_str(),"%lf%lf",&a,&b);
+      unsigned long nowcan = millis();
+      if((fabs(a-b)>4||a>40||b>40)) Play();      //Serial.println("Temperature: " + temperature + " *C ");
+
+    }
+    else {
+      //Serial.println("WiFi Disconnected");
+    }
+    previousMillis = millis();
+  }
+  delay(1000);
+}
+
+String httpGETRequest(const char* serverName) {
+  WiFiClient client;
+  HTTPClient http;
+    
+  // Your IP address with path or Domain name with URL path 
+  http.begin(client, serverName);
+  
+  // Send HTTP POST request
+  int httpResponseCode = http.GET();
+  
+  String payload = "--"; 
+  
+  if (httpResponseCode>0) {
+    //Serial.print("HTTP Response code: ");
+    //Serial.println(httpResponseCode);
+    payload = http.getString();
+  }
+  else {
+    //Serial.print("Error code: ");
+    //Serial.println(httpResponseCode);
+  }
+  // Free resources
+  http.end();
+
+  return payload;
+}

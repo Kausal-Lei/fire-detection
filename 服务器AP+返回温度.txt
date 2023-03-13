@@ -1,0 +1,51 @@
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <ESP8266WiFi.h>
+#include <stdlib.h>
+#include "ESPAsyncWebServer.h"
+#include <Wire.h>
+// Set your access point network credentials
+const char* ssid = "ESP82660";
+const char* password = "12345678l";
+#define ONE_WIRE_BUS 2            // 定义DS18B20数据口连接arduino的 2 脚
+#define ONE_WIRE_BUS2 0            // 定义DS18B20数据口连接arduino的 0 脚
+OneWire oneWire(ONE_WIRE_BUS);    // 初始连接在单总线上的单总线设备
+OneWire oneWire2(ONE_WIRE_BUS2);    // 初始连接在单总线上的单总线设备
+DallasTemperature sensors(&oneWire);
+DallasTemperature sensors2(&oneWire2);
+AsyncWebServer server(80);
+String readTemp() {
+  sensors.requestTemperatures();
+  sensors2.requestTemperatures();
+    return String(sensors.getTempCByIndex(0))+" "+String(sensors2.getTempCByIndex(0));
+  //return String(bme.readTemperature());
+}
+void setup()
+{
+  Serial.begin(9600);             // 设置串口通信波特率
+  sensors.begin();                // 初始库
+  sensors2.begin();                // 初始库
+  sensors.setWaitForConversion(false);
+  sensors2.setWaitForConversion(false);
+  WiFi.softAP(ssid, password);
+  IPAddress IP = WiFi.softAPIP();
+  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(2000, "text/html", (readTemp()).c_str());
+  });
+
+  // Start server
+  server.begin();
+}
+ 
+void loop(void)
+{ 
+  /*sensors.requestTemperatures();  // 发送命令获取温度
+  sensors2.requestTemperatures();  // 发送命令获取温度
+  Serial.print("温度值：");          //串口打印温度值
+  Serial.print(sensors.getTempCByIndex(0)); 
+  Serial.print("  "); 
+  Serial.print(sensors2.getTempCByIndex(0)); 
+  Serial.println("℃");
+  delay(1000);*/
+}
